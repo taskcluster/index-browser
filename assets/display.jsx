@@ -6,8 +6,11 @@ var IndexBrowser = React.createClass({
   render: function() {
     return (
         <div>
-        <h1>Select a Namespace</h1>
+        <h1>Index Management</h1>
+        <h2>Namespaces <small>list all available namespaces</small></h2>
         <NamespaceTable />
+        <h2>Ping <small>check if the server is up</small></h2>
+        <ComponentThatGoesPing />
         </div>
     );
   }
@@ -79,7 +82,12 @@ var NamespaceTable = React.createClass({
 
 var NamespaceRow = React.createClass({
   render: function() {
-    return <tr><td>{this.props.name}</td><td>{this.props.expires}</td></tr>;
+    var date = new Date();
+    date.setTime(Date.parse(this.props.expires));
+    var hoomanFormat = humaneDate(date);
+    date = date.toUTCString() + ' (' + hoomanFormat + ')';
+
+    return <tr><td>{this.props.name}</td><td>{date}</td></tr>;
   }
 });
 
@@ -94,7 +102,7 @@ var LoadMoreButton = React.createClass({
 var ResetButton = React.createClass({
   render: function() {
     return (<button onClick={this.props.handler}
-            className='btn btn-default'>Restart</button>);
+            className='btn btn-default'>Clear and reload</button>);
   }
 });
 
@@ -103,6 +111,63 @@ var ListButtons = React.createClass ({
     return (<div><LoadMoreButton hasMore={this.props.hasMore}
             handler={this.props.loadMoreHandler} />
             <ResetButton handler={this.props.resetHandler} /></div>);
+  }
+});
+
+var ComponentThatGoesPing = React.createClass({
+  getInitialState: function(){
+    return {
+      alive: null,
+      uptime: null
+    };
+  },
+  pingServer: function() {
+    request
+      .get(apiRoot + 'ping/')
+      .end()
+      .then(function(res) {
+        console.log('Received a ping');
+        var alive = res.body.alive;
+        var uptime = res.body.uptime;
+        this.setState({
+          alive: alive,
+          uptime: uptime
+        });
+      }.bind(this))
+      .then(null, function(err) {
+        console.log("Error pinging server");
+        console.err(err);
+        this.setState({
+          alive: false
+        });
+      });    
+  },
+  render: function() {
+    return <div><PingButton handler={this.pingServer} />
+           <PingResult alive={this.state.alive} uptime={this.state.uptime} /></div>;
+  }
+});
+
+var PingButton = React.createClass({
+  render: function() {
+    return <button onClick={this.props.handler} 
+            className='btn btn-primary'>Ping Server</button>;
+  }
+});
+
+var PingResult = React.createClass({
+  render: function() {
+    var alive = this.props.alive;
+    var string = 'is untested';
+    if (alive !== null) {
+      if (alive) {
+        var date = new Date(this.props.uptime * 1000 + Date.now());
+        string = 'has been up for ' + humaneDate(date);
+      } else {
+        string = 'is down';
+      }
+    }
+    return <span>Server {string}</span>;
   }
 });
 
