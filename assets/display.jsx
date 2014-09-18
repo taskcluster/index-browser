@@ -62,8 +62,8 @@ var NamespaceTable = React.createClass({
       {
         this.state.namespaces.map(function(ns){
           return <NamespaceRow name={ns.name}
-                                   expires={ns.expires}
-                                   key={ns.namespace} /> 
+                  expires={ns.expires}
+                  key={ns.namespace} /> 
         }, this)
       }
       </tbody>
@@ -85,25 +85,16 @@ var NamespaceRow = React.createClass({
 
 var LoadMoreButton = React.createClass({
   render: function() {
-    var string = 'Load More';
-    var attribs = {
-      className: 'btn btn-primary',
-      onClick: this.props.loadMoreHandler
-    };
-    if (!this.props.hasMore) {
-      attribs['disabled'] = true;
-    }
-    /* I would prefer to use JSX here, but I'm
-     * not sure how I do something like <X disabled />
-     * in JSX */
-    return React.DOM.button(attribs, string);
+    return (<button disabled={!this.props.hasMore}
+              className='btn btn-primary'
+              onClick={this.props.handler}>Load More</button>);
   }
 });
 
 var ResetButton = React.createClass({
   render: function() {
     return (<button onClick={this.props.handler}
-            className='btn btn-default'>Reset</button>);
+            className='btn btn-default'>Restart</button>);
   }
 });
 
