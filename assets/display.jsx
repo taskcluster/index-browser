@@ -6,7 +6,7 @@ var IndexBrowser = React.createClass({
   render: function() {
     return (
         <div>
-        <h1>Index Management</h1>
+        <h1>Taskcluster Index</h1>
         <h2>Namespaces <small>list all available namespaces</small></h2>
         <NamespaceTable />
         <h2>Ping <small>check if the server is up</small></h2>
@@ -20,7 +20,8 @@ var NamespaceTable = React.createClass({
   getInitialState: function () {
     return {
       continuationToken: null,
-      namespaces: []
+      namespaces: [],
+      selectedNamespace: null
     }
   },
   componentDidMount: function() {
@@ -28,10 +29,17 @@ var NamespaceTable = React.createClass({
   },
   clearNamespaces: function() {
     this.setState({
+      selectedNamespace: null,
       continuationToken: null,
       namespaces: []
     });
     this.loadNamespaces();
+  },
+  selectNamespace: function(evnt) {
+    var namespace = evnt.currentTarget.getAttribute('data-namespace');
+    this.setState({
+      selectedNamespace: namespace
+    });
   },
   loadNamespaces: function() {
     var query = {};
@@ -47,6 +55,7 @@ var NamespaceTable = React.createClass({
         var namespaces = res.body.namespaces;
         var conToken = res.body.continuationToken;
         this.setState({
+          selectedNamespace: null,
           continuationToken: conToken || null,
           namespaces: this.state.namespaces.concat(namespaces)
         });
@@ -64,17 +73,25 @@ var NamespaceTable = React.createClass({
       <tbody>
       {
         this.state.namespaces.map(function(ns){
-          return <NamespaceRow name={ns.name}
-                  expires={ns.expires}
-                  key={ns.namespace} /> 
+          return <NamespaceRow 
+                   namespace={ns.namespace}
+                   name={ns.name}
+                   expires={ns.expires}
+                   key={ns.namespace}
+                   handler={this.selectNamespace}
+                 /> 
         }, this)
       }
       </tbody>
       </table>
+      <NamespaceDetail
+        namespace={this.state.selectedNamespace} 
+      />
       <ListButtons 
         loadMoreHandler={this.loadNamespaces}
         resetHandler={this.clearNamespaces}
-        hasMore={!!this.state.continuationToken} />
+        hasMore={!!this.state.continuationToken} 
+      />
       </div>
     );
   }
@@ -86,8 +103,12 @@ var NamespaceRow = React.createClass({
     date.setTime(Date.parse(this.props.expires));
     var hoomanFormat = humaneDate(date);
     date = date.toUTCString() + ' (' + hoomanFormat + ')';
-
-    return <tr><td>{this.props.name}</td><td>{date}</td></tr>;
+    
+    console.log(this.props.namespace);
+    return <tr
+             data-namespace={this.props.namespace}
+             onClick={this.props.handler}
+           ><td>{this.props.name}</td><td>{date}</td></tr>;
   }
 });
 
@@ -111,6 +132,16 @@ var ListButtons = React.createClass ({
     return (<div><LoadMoreButton hasMore={this.props.hasMore}
             handler={this.props.loadMoreHandler} />
             <ResetButton handler={this.props.resetHandler} /></div>);
+  }
+});
+
+var NamespaceDetail = React.createClass({
+  render: function() {
+    if (this.props.namespace) {
+      return <div><p>Namespace details for {this.props.namespace}</p></div>
+    } else {
+      return <div></div>
+    }
   }
 });
 
@@ -143,7 +174,7 @@ var ComponentThatGoesPing = React.createClass({
       });    
   },
   render: function() {
-    return <div><PingButton handler={this.pingServer} />
+    return <div><PingButton handler={this.pingServer} /><br />
            <PingResult alive={this.state.alive} uptime={this.state.uptime} /></div>;
   }
 });
