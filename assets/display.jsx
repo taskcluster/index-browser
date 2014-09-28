@@ -43,27 +43,18 @@ var NamespaceTable = React.createClass({
   },
   loadNamespaces: function() {
     var query = {};
+    var index = new window.taskcluster.index();
+    var payload = {};
     if (this.state.continuationToken) {
-      query['continuationToken'] = this.state.continuationToken
+      payload = {continuationToken: this.state.continuationToken};
     }
-    request
-      .get(apiRoot + 'namespaces/')
-      .query(query)
-      .end()
-      .then(function(res) {
-        console.log('Received list of namespaces from index');
-        var namespaces = res.body.namespaces;
-        var conToken = res.body.continuationToken;
-        this.setState({
-          selectedNamespace: null,
-          continuationToken: conToken || null,
-          namespaces: this.state.namespaces.concat(namespaces)
-        });
-      }.bind(this))
-      .then(null, function(err) {
-        console.log("Error fetching namespace list");
-        console.error(err);
+    index.listNamespaces('', payload).then(function(result) {
+      this.setState({
+        continuationToken: result.continuationToken,
+        namespaces: result.namespaces,
+        selectedNamespace: null
       });
+    }.bind(this));
   },
   render: function() {
     return (
