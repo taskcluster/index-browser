@@ -153,25 +153,11 @@ var ComponentThatGoesPing = React.createClass({
     };
   },
   pingServer: function() {
-    request
-      .get(apiRoot + 'ping/')
-      .end()
-      .then(function(res) {
-        console.log('Received a ping');
-        var alive = res.body.alive;
-        var uptime = res.body.uptime;
-        this.setState({
-          alive: alive,
-          uptime: uptime
-        });
-      }.bind(this))
-      .then(null, function(err) {
-        console.log("Error pinging server");
-        console.err(err);
-        this.setState({
-          alive: false
-        });
-      });    
+    var index = new window.taskcluster.index();
+    index.ping().then(function(result) {
+      console.log(result);
+      this.setState(result);
+    }.bind(this))
   },
   render: function() {
     return <div><PingButton handler={this.pingServer} /><br />
