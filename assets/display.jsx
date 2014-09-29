@@ -1,18 +1,104 @@
 /** @jsx React.DOM */
 (function(exports) {
+'use strict';
 
 // Widget to show monitors
 var IndexBrowser = React.createClass({
   render: function() {
     return (
         <div>
-        <h1>Taskcluster Index</h1>
-        <h2>Namespaces <small>list all available namespaces</small></h2>
-        <NamespaceTable />
-        <h2>Ping <small>check if the server is up</small></h2>
+        <div className='page-header'><h1>Taskcluster Index</h1></div>
+        <p>This is a tool to browse the index of tasks.  Use it only for good.</p>
+        <NamespaceSelector />
         <ComponentThatGoesPing />
         </div>
     );
+  }
+});
+
+var NamespaceSelector = React.createClass({
+  getInitialState: function() {
+    return {
+      result: null,
+      error: null,
+    }
+  },
+  clear: function() {
+    this.replaceState(this.getInitialState());
+  },
+  error: function(error) {
+    this.replaceState({error: error, result: null});
+  },
+  select: function(namespace) {
+    var index = new window.taskcluster.index();
+    index.findTask(namespace)
+      .then(function(result) {
+        this.replaceState({error: null, result: result});
+      }.bind(this))
+      .then(null, function(error) {
+        this.replaceState({result:null, error: error});
+      }.bind(this));
+  },
+  render: function() {
+    var statusLine = ''; 
+    if (this.state.error) {
+      statusLine = <div className='alert alert-danger'>
+        <span className='glyphicon glyphicon-exclamation-sign'> </span>
+        <strong>ERROR</strong> {this.state.error.message || this.state.error}</div>;
+    } else if (this.state.result) {
+      statusLine = <div className='alert alert-info'>Found {JSON.stringify(this.state.result)}</div>
+    }
+    return <div>
+      <h2>Search for Namespace</h2>
+      <NamespaceSearchEntry search={this.select} clear={this.clear} error={this.error} />  
+      {statusLine}
+      </div>
+  }
+});
+
+var NamespaceSearchEntry = React.createClass({
+  getInitialState: function(){
+    return {text: ''}
+  },
+  clear: function(e) {
+    e.preventDefault();
+    this.replaceState(self.getInitialState());
+    this.props.clear();
+  },
+  search: function(e) {
+    e.preventDefault();
+    if (this.state.text === '') {
+      this.props.error('To do a search you must enter search terms');
+    } else {
+      this.props.search(this.state.text);
+    }
+  },
+  handleChange: function(e) {
+    this.setState({text: e.target.value});
+  },
+  render: function() {
+    return <div>
+      <label className='sr-only' htmlFor='namespace-entry'>Enter namespace</label>
+      <form action='#'>
+      <div className='input-group'>
+      <input 
+          onChange={this.handleChange}
+          id='namespace-search-entry'
+          className='form-control'
+          type='text'
+          ref='namespaceSearchEntry'
+          value={this.state.text}
+          placeholder='Enter namespace' />
+      <span className='input-group-btn'>
+        <button className='btn btn-primary' onClick={this.search}>
+          <span className='glyphicon glyphicon-search'></span> Search
+        </button>
+        <button className='btn btn-default' onClick={this.clear}>Clear</button>
+      </span>
+      </div>
+      </form>
+    </div>;
+
   }
 });
 
@@ -48,7 +134,7 @@ var NamespaceTable = React.createClass({
     if (this.state.continuationToken) {
       payload = {continuationToken: this.state.continuationToken};
     }
-    index.listNamespaces('', payload).then(function(result) {
+    index.listNamespaces(this.props.namespace, payload).then(function(result) {
       this.setState({
         continuationToken: result.continuationToken,
         namespaces: result.namespaces,
@@ -59,6 +145,7 @@ var NamespaceTable = React.createClass({
   render: function() {
     return (
       <div>
+      <h2>Subordinate namespaces for {this.props.namespace}</h2>
       <table className="table table-bordered table-hover">
       <thead><tr><th>Name</th><th>Expires</th></tr></thead>
       <tbody>
@@ -129,7 +216,11 @@ var ListButtons = React.createClass ({
 var NamespaceDetail = React.createClass({
   render: function() {
     if (this.props.namespace) {
-      return <div><p>Namespace details for {this.props.namespace}</p></div>
+      return <div>
+             <table className="table table-bordered table-hover">
+               <thead><tr><td>Task ID</td><td>Rank</td><td>Data</td><td>Expires</td></tr></thead>
+             </table>
+             </div>
     } else {
       return <div></div>
     }
@@ -151,15 +242,19 @@ var ComponentThatGoesPing = React.createClass({
     }.bind(this))
   },
   render: function() {
-    return <div><PingButton handler={this.pingServer} /><br />
-           <PingResult alive={this.state.alive} uptime={this.state.uptime} /></div>;
+    return <div>
+      <h2>Ping!<small>check if the indexing server is up</small></h2>
+      <PingButton handler={this.pingServer} />
+      <PingResult alive={this.state.alive} uptime={this.state.uptime} />
+    </div>;
   }
 });
 
 var PingButton = React.createClass({
   render: function() {
-    return <button onClick={this.props.handler} 
-            className='btn btn-primary'>Ping Server</button>;
+    return <button onClick={this.props.handler} className='btn btn-primary'>
+          <span className='glyphicon glyphicon-signal'></span> Ping Server
+          </button>;
   }
 });
 
@@ -175,7 +270,7 @@ var PingResult = React.createClass({
         string = 'is down';
       }
     }
-    return <span>Server {string}</span>;
+    return <div className='alert alert-info'>Server {string}</div>;
   }
 });
 
