@@ -58,11 +58,13 @@ var NamespaceSelector = React.createClass({
 
 var NamespaceSearchEntry = React.createClass({
   getInitialState: function(){
-    return {text: ''}
+    return {
+      text: '',
+    }
   },
   clear: function(e) {
     e.preventDefault();
-    this.replaceState(self.getInitialState());
+    this.replaceState(this.getInitialState());
     this.props.clear();
   },
   search: function(e) {
@@ -72,6 +74,10 @@ var NamespaceSearchEntry = React.createClass({
     } else {
       this.props.search(this.state.text);
     }
+  },
+  selectExisting: function(name) {
+    this.setState({text: name});
+    this.props.search(name);
   },
   handleChange: function(e) {
     this.setState({text: e.target.value});
@@ -93,12 +99,79 @@ var NamespaceSearchEntry = React.createClass({
         <button className='btn btn-primary' onClick={this.search}>
           <span className='glyphicon glyphicon-search'></span> Search
         </button>
+        <SelectExisting select={this.selectExisting} />
         <button className='btn btn-default' onClick={this.clear}>Clear</button>
       </span>
       </div>
       </form>
     </div>;
 
+  }
+});
+
+var SelectExisting = React.createClass({
+  getInitialState: function() {
+    return {
+      namespaces: [],
+      continuationToken: null,
+      loading: true
+    };
+  },
+  componentDidMount: function() {
+    this.load();
+  },
+  select: function(e) {
+    this.props.select(e.currentTarget.getAttribute('data-namespace'));
+  },
+  load: function() {
+    var index = new window.taskcluster.index();
+    var payload = {};
+    if (this.state.continuationToken) {
+      payload.continuationToken = this.state.continuationToken; 
+    } else {
+      // We reset so that we don't continuously append
+      this.setState({namespaces: []});
+    }
+    //Is there a better way to list all namespaces?
+    index.listNamespaces('', payload)
+      .then(function(result) {
+        console.log(result);
+        this.setState({
+          namespaces: this.state.namespaces.concat(result.namespaces),
+          continuationToken: result.continuationToken,
+          loading: false,
+        });
+      }.bind(this))
+      .then(null, function(error) {
+        this.setState({loading: false});
+      }.bind(this));
+  },
+  render: function() {
+    var list = [];
+    if (this.state.loading) {
+      list.push(<li key='loading'><a href='#'>Loading...</a></li>);
+    } else {
+      list = this.state.namespaces.map(function(ns) {
+        console.log(ns);
+        return <li
+                  data-name={ns.name}
+                  data-namespace={ns.namespace}
+                  data-expires={ns.expires}
+                  key={ns.namespace}
+                  onClick={this.select}><a href='#'>{ns.name}</a></li>;
+      }, this);
+    }
+    // Quick hack from http://stackoverflow.com/a/19229738
+    var style = {
+      height: 'auto',
+      'max-height': '500px',
+      'overflow-x': 'hidden',
+    };
+    return <div className='btn-group'>
+           <button className='btn btn-primary dropdown-toggle' data-toggle='dropdown'>
+             Select Existing<span className='caret'></span></button>
+           <ul className='dropdown-menu scrollable-menu' role='menu' style={style}>{list}</ul>
+           </div>
   }
 });
 
