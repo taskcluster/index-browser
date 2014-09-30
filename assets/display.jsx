@@ -37,6 +37,10 @@ var NamespaceSelector = React.createClass({
     }
     index.listNamespaces(namespace, payload)
       .then(function(result) {
+        // There's a little bit of a conundrum here.  The API
+        // doesn't differentiate between a namespace that exists
+        // only as a container of tasks and a namespace that does
+        // not exist at all.
         this.replaceState({error: null, result: result});
       }.bind(this))
       .then(null, function(error) {
