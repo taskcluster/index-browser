@@ -40,7 +40,7 @@ var NamespaceSelector = React.createClass({
         this.replaceState({error: null, result: result});
       }.bind(this))
       .then(null, function(error) {
-        this.replaceState({result:null, error: error});
+        this.error(error);
       }.bind(this));
   },
   render: function() {
@@ -62,8 +62,8 @@ var NamespaceSelector = React.createClass({
 
 var TasksForNamespace = React.createClass({
   load: function() {
-    
-  }
+      
+  },
   render: function() {
     return <p>WHADDUP G-Unit! {this.props.namespace}</p>
   }
