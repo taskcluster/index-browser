@@ -31,7 +31,11 @@ var NamespaceSelector = React.createClass({
   },
   select: function(namespace) {
     var index = new window.taskcluster.index();
-    index.findTask(namespace)
+    var payload = {}
+    if (this.state.result && this.state.result.continuationToken) {
+      payload.continuationToken = this.state.result.continuationToken;
+    }
+    index.listNamespaces(namespace, payload)
       .then(function(result) {
         this.replaceState({error: null, result: result});
       }.bind(this))
@@ -40,19 +44,28 @@ var NamespaceSelector = React.createClass({
       }.bind(this));
   },
   render: function() {
-    var statusLine = ''; 
+    var result = ''; 
     if (this.state.error) {
-      statusLine = <div className='alert alert-danger'>
+      result = <div className='alert alert-danger'>
         <span className='glyphicon glyphicon-exclamation-sign'> </span>
         <strong>ERROR</strong> {this.state.error.message || this.state.error}</div>;
     } else if (this.state.result) {
-      statusLine = <div className='alert alert-info'>Found {JSON.stringify(this.state.result)}</div>
+      result = <TasksForNamespace namespace={this.state.result} />
     }
     return <div>
       <h2>Search for Namespace</h2>
       <NamespaceSearchEntry search={this.select} clear={this.clear} error={this.error} />  
-      {statusLine}
+      {result}
       </div>
+  }
+});
+
+var TasksForNamespace = React.createClass({
+  load: function() {
+    
+  }
+  render: function() {
+    return <p>WHADDUP G-Unit! {this.props.namespace}</p>
   }
 });
 
@@ -99,7 +112,7 @@ var NamespaceSearchEntry = React.createClass({
         <button className='btn btn-primary' onClick={this.search}>
           <span className='glyphicon glyphicon-search'></span> Search
         </button>
-        <SelectExisting select={this.selectExisting} />
+        <SelectExisting error={this.props.error} select={this.selectExisting} />
         <button className='btn btn-default' onClick={this.clear}>Clear</button>
       </span>
       </div>
@@ -129,13 +142,14 @@ var SelectExisting = React.createClass({
     if (this.state.continuationToken) {
       payload.continuationToken = this.state.continuationToken; 
     } else {
-      // We reset so that we don't continuously append
+      // We reset so that we don't continuously append.  This could
+      // be racing with the next setState on success, but let's focus
+      // on something more important than non-harmful duplicate entries
       this.setState({namespaces: []});
     }
     //Is there a better way to list all namespaces?
     index.listNamespaces('', payload)
       .then(function(result) {
-        console.log(result);
         this.setState({
           namespaces: this.state.namespaces.concat(result.namespaces),
           continuationToken: result.continuationToken,
@@ -144,6 +158,7 @@ var SelectExisting = React.createClass({
       }.bind(this))
       .then(null, function(error) {
         this.setState({loading: false});
+        this.props.error('Error loading existing values');
       }.bind(this));
   },
   render: function() {
@@ -152,7 +167,6 @@ var SelectExisting = React.createClass({
       list.push(<li key='loading'><a href='#'>Loading...</a></li>);
     } else {
       list = this.state.namespaces.map(function(ns) {
-        console.log(ns);
         return <li
                   data-name={ns.name}
                   data-namespace={ns.namespace}
@@ -169,134 +183,9 @@ var SelectExisting = React.createClass({
     };
     return <div className='btn-group'>
            <button className='btn btn-primary dropdown-toggle' data-toggle='dropdown'>
-             Select Existing<span className='caret'></span></button>
+             Select Existing <span className='caret'></span></button>
            <ul className='dropdown-menu scrollable-menu' role='menu' style={style}>{list}</ul>
            </div>
-  }
-});
-
-var NamespaceTable = React.createClass({
-  getInitialState: function () {
-    return {
-      continuationToken: null,
-      namespaces: [],
-      selectedNamespace: null
-    }
-  },
-  componentDidMount: function() {
-    this.loadNamespaces();
-  },
-  clearNamespaces: function() {
-    this.setState({
-      selectedNamespace: null,
-      continuationToken: null,
-      namespaces: []
-    });
-    this.loadNamespaces();
-  },
-  selectNamespace: function(evnt) {
-    var namespace = evnt.currentTarget.getAttribute('data-namespace');
-    this.setState({
-      selectedNamespace: namespace
-    });
-  },
-  loadNamespaces: function() {
-    var query = {};
-    var index = new window.taskcluster.index();
-    var payload = {};
-    if (this.state.continuationToken) {
-      payload = {continuationToken: this.state.continuationToken};
-    }
-    index.listNamespaces(this.props.namespace, payload).then(function(result) {
-      this.setState({
-        continuationToken: result.continuationToken,
-        namespaces: result.namespaces,
-        selectedNamespace: null
-      });
-    }.bind(this));
-  },
-  render: function() {
-    return (
-      <div>
-      <h2>Subordinate namespaces for {this.props.namespace}</h2>
-      <table className="table table-bordered table-hover">
-      <thead><tr><th>Name</th><th>Expires</th></tr></thead>
-      <tbody>
-      {
-        this.state.namespaces.map(function(ns){
-          return <NamespaceRow 
-                   namespace={ns.namespace}
-                   name={ns.name}
-                   expires={ns.expires}
-                   key={ns.namespace}
-                   handler={this.selectNamespace}
-                 /> 
-        }, this)
-      }
-      </tbody>
-      </table>
-      <NamespaceDetail
-        namespace={this.state.selectedNamespace} 
-      />
-      <ListButtons 
-        loadMoreHandler={this.loadNamespaces}
-        resetHandler={this.clearNamespaces}
-        hasMore={!!this.state.continuationToken} 
-      />
-      </div>
-    );
-  }
-});
-
-var NamespaceRow = React.createClass({
-  render: function() {
-    var date = new Date();
-    date.setTime(Date.parse(this.props.expires));
-    var hoomanFormat = humaneDate(date);
-    date = date.toUTCString() + ' (' + hoomanFormat + ')';
-    
-    console.log(this.props.namespace);
-    return <tr
-             data-namespace={this.props.namespace}
-             onClick={this.props.handler}
-           ><td>{this.props.name}</td><td>{date}</td></tr>;
-  }
-});
-
-var LoadMoreButton = React.createClass({
-  render: function() {
-    return (<button disabled={!this.props.hasMore}
-              className='btn btn-primary'
-              onClick={this.props.handler}>Load More</button>);
-  }
-});
-
-var ResetButton = React.createClass({
-  render: function() {
-    return (<button onClick={this.props.handler}
-            className='btn btn-default'>Clear and reload</button>);
-  }
-});
-
-var ListButtons = React.createClass ({
-  render: function() {
-    return (<div><LoadMoreButton hasMore={this.props.hasMore}
-            handler={this.props.loadMoreHandler} />
-            <ResetButton handler={this.props.resetHandler} /></div>);
-  }
-});
-
-var NamespaceDetail = React.createClass({
-  render: function() {
-    if (this.props.namespace) {
-      return <div>
-             <table className="table table-bordered table-hover">
-               <thead><tr><td>Task ID</td><td>Rank</td><td>Data</td><td>Expires</td></tr></thead>
-             </table>
-             </div>
-    } else {
-      return <div></div>
-    }
   }
 });
 
