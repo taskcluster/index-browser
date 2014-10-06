@@ -93,7 +93,12 @@ var NamespaceSearchEntry = React.createClass({
     this.props.search(name);
   },
   handleChange: function(e) {
-    this.setState({text: e.target.value});
+    alert(e.target.value);
+    if (e.target.value === '') {
+      this.clear(e);
+    } else {
+      this.setState({text: e.target.value});
+    }
   },
   render: function() {
     return <div>
