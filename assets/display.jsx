@@ -46,181 +46,6 @@ var NamespaceSelector = React.createClass({
   }
 });
 
-var ErrorBar = React.createClass({
-  render: function() {
-    return <div className='alert alert-danger'>
-      <span className='glyphicon glyphicon-exclamation-sign'></span> 
-      <strong>ERROR</strong> {this.props.error.message || this.props.error}
-    </div>;
-  }
-});
-
-var NamespaceInfo = React.createClass({
-  render: function() {
-    return <p>Information for namespace {this.props.namespace}</p>;
-  }
-});
-
-var TaskList = React.createClass({
-  getInitialState: function() {
-    return {
-      error: null,
-      loading: true,
-      tasks: []
-    };
-  },
-  loadMore: function(props) {
-    // Do task fetching here!
-
-    // We need to handle the case where the properties of this component
-    // are changing.  Instead of hacking things in componentWillReceiveProps
-    // we'll intead decide whether we use a specified set of properties or
-    // the nextProps object received in the hook
-    var lProps = props || this.props;  
-    console.log('Loading more tasks');
-    this.setState({loading: true});
-    var index = new window.taskcluster.index();
-    var payload = {}
-    if (this.state.continuationToken) {
-      payload.continuationToken = this.state.continuationToken;
-    }
-    index.listTasks(lProps.namespace, payload)
-      .then(function(result) {
-        //console.log(JSON.stringify(result));
-        this.setState({tasks: result.tasks, loading: false});
-      }.bind(this))
-      .then(null, function(error) {
-        this.setState({loading: false, error: error});
-      }.bind(this));
-  },
-  componentDidMount: function () {
-    this.loadMore();
-  },
-  componentWillReceiveProps: function (nextProps) {
-    this.replaceState(this.getInitialState());
-    this.loadMore(nextProps);
-  },
-  reset: function () {
-    console.log('Resetting tasks');
-    this.replaceState(this.getInitialState());
-    this.loadMore();
-  },
-  render: function() {
-    var result;
-    if (this.state.error) {
-      result = <ErrorBar error={this.state.error} />;
-    } else if (this.state.loading) {
-      result = <div className='alert alert-info'><span className='glyphicon glyphicon-refresh'></span> Loading</div>;
-    } else {
-      result = <span>
-        <div className='alert alert-info'>{this.props.namespace}</div>
-        <TasksForNamespace tasks={this.state.tasks} />
-        {this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''}
-      </span>;
-    }
-        
-    return <div>{result}<ResetTasks handler={this.reset} /></div>;
-  }
-});
-
-var LoadMoreTasksButton = React.createClass({
-  render: function() {
-    return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
-  }
-});
-
-var ResetTasks = React.createClass({
-  render: function() {
-    return <button className='btn btn-default' onClick={this.props.handler}>Clear and Reload</button>;
-  }
-});
-
-var TasksForNamespace = React.createClass({
-  render: function() {
-    return <div className='table-responsive'><table className='table table-hover table-striped'>
-             <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
-             <tbody>
-             {
-                this.props.tasks.map(function (t) {
-                  return <TaskRow key={t.namespace} task={t} />;
-                }, this)
-             }
-             </tbody>
-           </table></div>;
-  }
-});
-
-var TaskRow = React.createClass({
-  render: function() {
-    var t = this.props.task;
-    var dateObj = new Date(t.expires);
-    var prettyExpiry = dateObj.toUTCString() + ' - ' + humaneDate(dateObj);
-    return <tr>
-             <td>{t.namespace}</td>
-             <td><TaskInspectorLink id={t.taskId} /></td>
-             <td>{t.rank}</td>
-             <td><DataDisplayButton task={t} prettyExpiry={prettyExpiry}/></td>
-             <td>{prettyExpiry}</td>
-           </tr>;
-  }
-});
-
-var DataDisplayButton = React.createClass({
-  render: function() {
-    // We have to remove periods and colons from ID names
-    // because Jquery likes to silently fail if IDs that it cares
-    // about contain either of these chars.  I'd prefer to hash
-    // the ID using SHA1, but I don't have a sha1 easily available
-    var id = 'data-modal-' + this.props.task.namespace
-                              .replace(/[.]/g, '_DOT_')
-                              .replace(/[:]/g, '_COL_');
-    var hashId = '#' + id;
-    var lblId = id + '-label';
-    var task = this.props.task;
-    return <div>
-            <button className="btn btn-default" data-toggle="modal" data-target={hashId}>
-              Show Data
-            </button>
-
-            <div className="modal fade" id={id} tabIndex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <button type="button" className="close" data-dismiss="modal">
-                      <span aria-hidden="true">&times;</span>
-                      <span className="sr-only">Close</span>
-                    </button>
-                    <h4 className="modal-title" id="{lblId}">{task.namespace}</h4>
-                  </div>
-                  <div className="modal-body">
-                    <h5>Defined Data</h5>
-                    <ul className="list-group">
-                      <li className="list-group-item">Namespace: {task.namespace}</li>
-                      <li className="list-group-item">Task ID: <TaskInspectorLink id={task.taskId} /></li>
-                      <li className="list-group-item">Rank: {task.rank}</li>
-                      <li className="list-group-item">Expiration: {this.props.prettyExpiry}</li>
-                    </ul>
-                    <h5>Arbitrary Data</h5>
-                    <pre><code>{window.linkify(JSON.stringify(this.props.task.data, null, 2))}</code></pre>
-                  </div>
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="button" className="btn btn-primary">Save changes</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>;
-  }
-});
-
-var TaskInspectorLink = React.createClass({
-  render: function() {
-    var link = 'http://docs.taskcluster.net/tools/task-inspector/#' + this.props.id;
-    return <a href={link} target='_blank'>{this.props.id}</a>;
-  }
-})
-
 var NamespaceSearchEntry = React.createClass({
   getInitialState: function(){
     return {
@@ -342,6 +167,240 @@ var SelectExisting = React.createClass({
              {label} <span className='caret'></span></button>
            <ul className='dropdown-menu scrollable-menu' role='menu' style={style}>{list}</ul>
            </div>
+  }
+});
+
+var TaskList = React.createClass({
+  getInitialState: function() {
+    return {
+      error: null,
+      loading: true,
+      continuationToken: null,
+      tasks: []
+    };
+  },
+  loadMore: function() {
+    var index = new window.taskcluster.index();
+    
+    var payload = {};
+    if (this.state.continuationToken) {
+      payload = {
+        continuationToken: this.state.continuationToken
+      };
+    }
+    console.log('Payload: ' + JSON.stringify(payload));
+
+    index.listTasks(this.props.namespace, payload)
+      .then(function(result) {
+        console.log('Got a new continuationToken: ' + result.continuationToken);
+        /* I don't know why, but I seem to continuously get the same continuation
+         * token no matter what I pass in as the payload.  I don't know what's broken
+         */
+        this.setState({
+          loading: false,
+          tasks: result.tasks,
+          continuationToken: result.continuationToken
+        });
+      }.bind(this))
+      .then(null, function(error) {
+        this.setState({loading: false, error: error});
+      }.bind(this));
+
+  },
+  componentDidMount: function () {
+    this.loadMore();
+  },
+  componentDidUpdate: function (prevProps) {
+    if (prevProps.namespace !== this.props.namespace) {
+      console.log('Resetting component because we have a new namespace');
+      this.reset();
+    }
+  },
+  reset: function () {
+    console.log('Resetting tasks');
+    this.replaceState(this.getInitialState());
+    this.loadMore();
+  },
+  render: function() {
+    var result;
+    if (this.state.error) {
+      result = <ErrorBar error={this.state.error} />;
+    } else {
+      var loadingBar = '';
+      if (this.state.loading) {
+        var loadingBar = <div className='alert alert-info'>
+          <span className='glyphicon glyphicon-refresh'></span> Loading
+        </div>;
+      }
+      if (this.state.tasks.length === 0 && !this.state.loading) {
+        result = <div className='alert alert-info'><span className='glyphicon glyphicon-hand-right'></span> No tasks were found</div>;
+      } else {
+        result = <span>
+          <h3>Tasks for {this.props.namespace}</h3>
+          <TasksForNamespace tasks={this.state.tasks} />
+          {loadingBar}
+          {this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''}
+        </span>;
+      }
+    }
+        
+    return <div>{result}<ResetTasks handler={this.reset} /></div>;
+  }
+});
+
+var TasksForNamespace = React.createClass({
+  render: function() {
+    return <div className='table-responsive'><table className='table table-hover table-striped'>
+             <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
+             <tbody>
+             {
+                this.props.tasks.map(function (t) {
+                  return <TaskRow key={t.namespace} task={t} />;
+                }, this)
+             }
+             </tbody>
+             <tfoot><tr><td>Count</td><td colSpan='4'>{this.props.tasks.length}</td></tr></tfoot>
+           </table></div>;
+  }
+});
+
+var LoadMoreTasksButton = React.createClass({
+  render: function() {
+    return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
+  }
+});
+
+var ResetTasks = React.createClass({
+  render: function() {
+    return <button className='btn btn-default' onClick={this.props.handler}>Reload</button>;
+  }
+});
+
+
+var TaskRow = React.createClass({
+  render: function() {
+    var t = this.props.task;
+    var dateObj = new Date(t.expires);
+    var prettyExpiry = dateObj.toUTCString() + ' - ' + humaneDate(dateObj);
+    return <tr key={t.namespace}>
+             <td>{t.namespace}</td>
+             <td><TaskInspectorLink id={t.taskId} /></td>
+             <td>{t.rank}</td>
+             <td><DataDisplayButton task={t} /></td>
+             <td>{expiryTime(t.expires)}</td>
+           </tr>;
+  }
+});
+
+var DataDisplayButton = React.createClass({
+  render: function() {
+    var title = this.props.task.namespace;
+    var body = <TaskDisplay task={this.props.task} />;
+    return <Modal openBtnLbl='Details' id={this.props.task.namespace} title={title} body={body} />
+  }
+});
+
+var Modal = React.createClass({
+  render: function () {
+    // Get info out of props and set defaults
+    var btnType = this.props.btnType || 'default';
+    var rawId = this.props.id || 'bootstrap-modal';
+    var openBtnLbl = this.props.openBtnLbl || 'Open';
+    var closeBtnLbl = this.props.closeBtnLbl || 'Close';
+    var saveBtnLbl = this.props.saveBtnLbl;
+    var saveBtnAction = this.props.saveAction;
+    var title = this.props.title;
+    var body = this.props.body;
+
+    // Figure things out
+    var id = 'data-modal-' + rawId
+        .replace(/[ ]/g, '_SPC_')
+        .replace(/[.]/g, '_DOT_')
+        .replace(/[:]/g, '_COL_');
+    var hashId = '#' + id;
+    var lblId = id + '-label';
+    var btnCls = 'btn btn-' + btnType;
+
+    // Should we have a save button?
+    var saveBtn = '';
+    if (saveBtnAction) {
+      saveBtn = <button type="button" className="btn btn-primary" onClick={saveBtnAction}>{saveBtnLbl}</button>;
+    }
+    return <div>
+            <button className={btnCls} data-toggle="modal" data-target={hashId}> Show Data</button>
+
+            <div className="modal fade" id={id} tabIndex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <button type="button" className="close" data-dismiss="modal">
+                      <span aria-hidden="true">&times;</span>
+                      <span className="sr-only">Close</span>
+                    </button>
+                    <h4 className="modal-title" id="{lblId}">{title}</h4>
+                  </div>
+                  <div className="modal-body">
+                  {body}
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-default" data-dismiss="modal">{closeBtnLbl}</button>
+                    {saveBtn}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>;
+  }
+});
+
+function expiryTime(str) {
+    var d = new Date(str);
+    return '' +
+      d.getUTCDate() + '.' + 
+      d.getUTCMonth() + '.' +
+      d.getUTCFullYear() + ' ' +
+      d.getUTCHours() + ':' +
+      d.getUTCMinutes() + ' ' + 
+      '(' + humaneDate(d) + ')';
+}
+
+var TaskDisplay = React.createClass({
+  render: function() {
+    var task = this.props.task;
+    return <span>
+      <h5>Defined Data</h5>
+      <ul className="list-group">
+        <li className="list-group-item">Namespace: {task.namespace}</li>
+        <li className="list-group-item">Task ID: <TaskInspectorLink id={task.taskId} /></li>
+        <li className="list-group-item">Rank: {task.rank}</li>
+        <li className="list-group-item">Expiration: {expiryTime(task.expires)}</li>
+      </ul>
+      <h5>Arbitrary Data</h5>
+      <pre><code>{window.linkify(JSON.stringify(task.data, null, 2))}</code></pre>
+    </span>;
+  }
+});
+
+var ErrorBar = React.createClass({
+  render: function() {
+    return <div className='alert alert-danger'>
+      <span className='glyphicon glyphicon-exclamation-sign'></span> 
+      <strong>ERROR</strong> {this.props.error.message || this.props.error}
+      {this.props.error.stack ? <pre>{this.props.error.stack}</pre> : ''}
+    </div>;
+  }
+});
+
+var NamespaceInfo = React.createClass({
+  render: function() {
+    return <p>Information for namespace {this.props.namespace}</p>;
+  }
+});
+
+var TaskInspectorLink = React.createClass({
+  render: function() {
+    var link = 'http://docs.taskcluster.net/tools/task-inspector/#' + this.props.id;
+    return <a href={link} target='_blank'>{this.props.id}</a>;
   }
 });
 
