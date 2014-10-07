@@ -139,13 +139,12 @@ var ResetTasks = React.createClass({
 
 var TasksForNamespace = React.createClass({
   render: function() {
-    var i = 0;
     return <div className='table-responsive'><table className='table table-hover table-striped'>
              <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
              <tbody>
              {
                 this.props.tasks.map(function (t) {
-                  return <TaskRow i={i++} key={t.namespace} task={t} />;
+                  return <TaskRow key={t.namespace} task={t} />;
                 }, this)
              }
              </tbody>
@@ -160,7 +159,7 @@ var TaskRow = React.createClass({
              <td>{t.namespace}</td>
              <td>{t.taskId}</td>
              <td>{t.rank}</td>
-             <td><DataDisplay i={this.props.i} namespace={t.namespace} data={t.data} /></td>
+             <td><DataDisplay namespace={t.namespace} data={t.data} /></td>
              <td>{t.expires}</td>
            </tr>;
   }
@@ -168,12 +167,7 @@ var TaskRow = React.createClass({
 
 var DataDisplay = React.createClass({
   render: function() {
-    /* Ideally, we'd use the namespace here, but 
-       having the periods in the namespace name
-       seems to mess with the modal
-     */
-    //var id = 'data-modal-' + data.props.namespace;
-    var id = 'data-modal-' + this.props.i;
+    var id = 'data-modal-' + this.props.namespace.replace(':', '_COLON_').replace('.', '_PERIOD_');
     var hashId = '#' + id;
     var lblId = id + '-label';
     return <div>
@@ -186,10 +180,11 @@ var DataDisplay = React.createClass({
     <div className="modal-content">
       <div className="modal-header">
         <button type="button" className="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span className="sr-only">Close</span></button>
-        <h4 className="modal-title" id="myModalLabel">Modal title</h4>
+        <h4 className="modal-title" id="{lblId}">Data for {this.props.namespace}</h4>
       </div>
       <div className="modal-body">
-{JSON.stringify(this.props.data)} {this.props.i}
+        <p>Below is task specific data for this index</p> 
+        <pre><code>{JSON.stringify(this.props.data, null, 2)}</code></pre>
       </div>
       <div className="modal-footer">
         <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
@@ -324,7 +319,7 @@ var SelectExisting = React.createClass({
     };
     return <div className='btn-group'>
            <button className='btn btn-primary dropdown-toggle' data-toggle='dropdown'>
-             {label}<span className='caret'></span></button>
+             {label} <span className='caret'></span></button>
            <ul className='dropdown-menu scrollable-menu' role='menu' style={style}>{list}</ul>
            </div>
   }
