@@ -7,18 +7,17 @@ var IndexBrowser = React.createClass({
   render: function() {
     return (
         <div>
-        <NamespaceSelector />
+        <TaskBrowser />
         <ComponentThatGoesPing />
         </div>
     );
   }
 });
 
-var NamespaceSelector = React.createClass({
+var TaskBrowser = React.createClass({
   getInitialState: function() {
     return {
-      result: null,
-      selectedNamespace: null,
+      namespace: null,
       error: null,
     }
   },
@@ -29,19 +28,13 @@ var NamespaceSelector = React.createClass({
     this.setState({error: error});
   },
   select: function(namespace) {
-    this.setState({selectedNamespace: namespace, error: null});
+    this.setState({namespace: namespace, error: null});
   },
   render: function() {
-    var result = ''; 
-    if (this.state.error) {
-      result = <ErrorBar error={this.state.error} />;
-    } else if (this.state.selectedNamespace) {
-      result = <TaskList namespace={this.state.selectedNamespace} />
-    }
     return <div>
       <h2>Search for Namespace</h2>
       <NamespaceSearchEntry search={this.select} clear={this.clear} error={this.error} />  
-      {result}
+      {this.state.error ? <ErrorBar error={this.state.error} /> : <TaskList namespace={this.state.namespace} />}
       </div>
   }
 });
@@ -49,8 +42,12 @@ var NamespaceSelector = React.createClass({
 var NamespaceSearchEntry = React.createClass({
   getInitialState: function(){
     return {
+      error: null,
       text: '',
     }
+  },
+  error: function (error) {
+    this.props.error(error);
   },
   clear: function(e) {
     e.preventDefault();
@@ -60,13 +57,13 @@ var NamespaceSearchEntry = React.createClass({
   search: function(e) {
     e.preventDefault();
     if (this.state.text === '') {
-      this.props.error('To do a search you must enter search terms');
+      this.error('To do a search, you must first enter a namespace');
     } else {
       this.props.search(this.state.text);
     }
   },
   selectExisting: function(name) {
-    this.setState({text: name});
+    this.setState({text: name, error: null});
     this.props.search(name);
   },
   handleChange: function(e) {
@@ -187,10 +184,12 @@ var TaskList = React.createClass({
       payload = {
         continuationToken: this.state.continuationToken
       };
+    } else {
+      this.setState({tasks: []});
     }
     console.log('Payload: ' + JSON.stringify(payload));
 
-    index.listTasks(this.props.namespace, payload)
+    index.listTasks(this.props.namespace, JSON.stringify(payload))
       .then(function(result) {
         console.log('Got a new continuationToken: ' + result.continuationToken);
         /* I don't know why, but I seem to continuously get the same continuation
@@ -259,7 +258,7 @@ var TasksForNamespace = React.createClass({
                 }, this)
              }
              </tbody>
-             <tfoot><tr><td>Count</td><td colSpan='4'>{this.props.tasks.length}</td></tr></tfoot>
+             <tfoot><tr><td>Count</td><td style={{'text-align': 'right'}} colSpan='4'>{this.props.tasks.length}</td></tr></tfoot>
            </table></div>;
   }
 });
