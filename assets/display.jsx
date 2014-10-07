@@ -71,8 +71,14 @@ var TaskList = React.createClass({
       tasks: []
     };
   },
-  loadMore: function() {
+  loadMore: function(props) {
     // Do task fetching here!
+
+    // We need to handle the case where the properties of this component
+    // are changing.  Instead of hacking things in componentWillReceiveProps
+    // we'll intead decide whether we use a specified set of properties or
+    // the nextProps object received in the hook
+    var lProps = props || this.props;  
     console.log('Loading more tasks');
     this.setState({loading: true});
     var index = new window.taskcluster.index();
@@ -80,7 +86,7 @@ var TaskList = React.createClass({
     if (this.state.continuationToken) {
       payload.continuationToken = this.state.continuationToken;
     }
-    index.listTasks(this.props.namespace, payload)
+    index.listTasks(lProps.namespace, payload)
       .then(function(result) {
         //console.log(JSON.stringify(result));
         this.setState({tasks: result.tasks, loading: false});
@@ -91,6 +97,10 @@ var TaskList = React.createClass({
   },
   componentDidMount: function () {
     this.loadMore();
+  },
+  componentWillReceiveProps: function (nextProps) {
+    this.replaceState(this.getInitialState());
+    this.loadMore(nextProps);
   },
   reset: function () {
     console.log('Resetting tasks');
@@ -104,7 +114,6 @@ var TaskList = React.createClass({
     } else if (this.state.loading) {
       result = <div className='alert alert-info'><span className='glyphicon glyphicon-refresh'></span> Loading</div>;
     } else {
-
       result = <span>
         <div className='alert alert-info'>{this.props.namespace}</div>
         <TasksForNamespace tasks={this.state.tasks} />
@@ -172,7 +181,7 @@ var DataDisplay = React.createClass({
   Show Data
 </button>
 
-<div className="modal fade" id={id} tabindex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
+<div className="modal fade" id={id} tabIndex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
   <div className="modal-dialog">
     <div className="modal-content">
       <div className="modal-header">
@@ -221,7 +230,6 @@ var NamespaceSearchEntry = React.createClass({
     this.props.search(name);
   },
   handleChange: function(e) {
-    alert(e.target.value);
     if (e.target.value === '') {
       this.clear(e);
     } else {
