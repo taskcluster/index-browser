@@ -159,7 +159,7 @@ var TaskRow = React.createClass({
     var prettyExpiry = dateObj.toUTCString() + ' - ' + humaneDate(dateObj);
     return <tr>
              <td>{t.namespace}</td>
-             <td>{t.taskId}</td>
+             <td><TaskInspectorLink id={t.taskId} /></td>
              <td>{t.rank}</td>
              <td><DataDisplayButton task={t} prettyExpiry={prettyExpiry}/></td>
              <td>{prettyExpiry}</td>
@@ -192,13 +192,13 @@ var DataDisplayButton = React.createClass({
                       <span aria-hidden="true">&times;</span>
                       <span className="sr-only">Close</span>
                     </button>
-                    <h4 className="modal-title" id="{lblId}">Data for {task.namespace}</h4>
+                    <h4 className="modal-title" id="{lblId}">{task.namespace}</h4>
                   </div>
                   <div className="modal-body">
                     <h5>Defined Data</h5>
                     <ul className="list-group">
                       <li className="list-group-item">Namespace: {task.namespace}</li>
-                      <li className="list-group-item">Task ID: {task.taskId}</li>
+                      <li className="list-group-item">Task ID: <TaskInspectorLink id={task.taskId} /></li>
                       <li className="list-group-item">Rank: {task.rank}</li>
                       <li className="list-group-item">Expiration: {this.props.prettyExpiry}</li>
                     </ul>
@@ -215,6 +215,13 @@ var DataDisplayButton = React.createClass({
           </div>;
   }
 });
+
+var TaskInspectorLink = React.createClass({
+  render: function() {
+    var link = 'http://docs.taskcluster.net/tools/task-inspector/#' + this.props.id;
+    return <a href={link} target='_blank'>{this.props.id}</a>;
+  }
+})
 
 var NamespaceSearchEntry = React.createClass({
   getInitialState: function(){
