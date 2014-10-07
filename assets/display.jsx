@@ -20,6 +20,7 @@ var NamespaceSelector = React.createClass({
   getInitialState: function() {
     return {
       result: null,
+      selectedNamespace: null,
       error: null,
     }
   },
@@ -27,30 +28,17 @@ var NamespaceSelector = React.createClass({
     this.replaceState(this.getInitialState());
   },
   error: function(error) {
-    this.replaceState({error: error, result: null});
+    this.setState({error: error});
   },
   select: function(namespace) {
-    var index = new window.taskcluster.index();
-    var payload = {}
-    if (this.state.result && this.state.result.continuationToken) {
-      payload.continuationToken = this.state.result.continuationToken;
-    }
-    index.listNamespaces(namespace, payload)
-      .then(function(result) {
-        this.replaceState({error: null, result: result});
-      }.bind(this))
-      .then(null, function(error) {
-        this.error(error);
-      }.bind(this));
+    this.setState({selectedNamespace: namespace});
   },
   render: function() {
     var result = ''; 
     if (this.state.error) {
-      result = <div className='alert alert-danger'>
-        <span className='glyphicon glyphicon-exclamation-sign'> </span>
-        <strong>ERROR</strong> {this.state.error.message || this.state.error}</div>;
-    } else if (this.state.result) {
-      result = <TasksForNamespace namespace={this.state.result} />
+      result = <ErrorBar error={this.state.error} />;
+    } else if (this.state.selectedNamespace) {
+      result = <TaskList namespace={this.state.selectedNamespace} />
     }
     return <div>
       <h2>Search for Namespace</h2>
@@ -60,12 +48,152 @@ var NamespaceSelector = React.createClass({
   }
 });
 
-var TasksForNamespace = React.createClass({
-  load: function() {
-      
+var ErrorBar = React.createClass({
+  render: function() {
+    return <div className='alert alert-danger'>
+      <span className='glyphicon glyphicon-exclamation-sign'></span> 
+      <strong>ERROR</strong> {this.props.error.message || this.props.error}
+    </div>;
+  }
+});
+
+var NamespaceInfo = React.createClass({
+  render: function() {
+    return <p>Information for namespace {this.props.namespace}</p>;
+  }
+});
+
+var TaskList = React.createClass({
+  getInitialState: function() {
+    return {
+      error: null,
+      loading: true,
+      tasks: []
+    };
+  },
+  loadMore: function() {
+    // Do task fetching here!
+    console.log('Loading more tasks');
+    this.setState({loading: true});
+    var index = new window.taskcluster.index();
+    var payload = {}
+    if (this.state.continuationToken) {
+      payload.continuationToken = this.state.continuationToken;
+    }
+    index.listTasks(this.props.namespace, payload)
+      .then(function(result) {
+        //console.log(JSON.stringify(result));
+        this.setState({tasks: result.tasks, loading: false});
+      }.bind(this))
+      .then(null, function(error) {
+        this.setState({loading: false, error: error});
+      }.bind(this));
+  },
+  componentDidMount: function () {
+    this.loadMore();
+  },
+  reset: function () {
+    console.log('Resetting tasks');
+    this.replaceState(this.getInitialState());
+    this.loadMore();
   },
   render: function() {
-    return <p>WHADDUP G-Unit! {this.props.namespace}</p>
+    var result;
+    if (this.state.error) {
+      result = <ErrorBar error={this.state.error} />;
+    } else if (this.state.loading) {
+      result = <div className='alert alert-info'><span className='glyphicon glyphicon-refresh'></span> Loading</div>;
+    } else {
+
+      result = <span>
+        <div className='alert alert-info'>{this.props.namespace}</div>
+        <TasksForNamespace tasks={this.state.tasks} />
+        {this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''}
+      </span>;
+    }
+        
+    return <div>{result}<ResetTasks handler={this.reset} /></div>;
+  }
+});
+
+var LoadMoreTasksButton = React.createClass({
+  render: function() {
+    return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
+  }
+});
+
+var ResetTasks = React.createClass({
+  render: function() {
+    return <button className='btn btn-default' onClick={this.props.handler}>Clear and Reload</button>;
+  }
+});
+
+var TasksForNamespace = React.createClass({
+  render: function() {
+    var i = 0;
+    return <div className='table-responsive'><table className='table table-hover table-striped'>
+             <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
+             <tbody>
+             {
+                this.props.tasks.map(function (t) {
+                  return <TaskRow i={i++} key={t.namespace} task={t} />;
+                }, this)
+             }
+             </tbody>
+           </table></div>;
+  }
+});
+
+var TaskRow = React.createClass({
+  render: function() {
+    var t = this.props.task;
+    return <tr>
+             <td>{t.namespace}</td>
+             <td>{t.taskId}</td>
+             <td>{t.rank}</td>
+             <td><DataDisplay i={this.props.i} namespace={t.namespace} data={t.data} /></td>
+             <td>{t.expires}</td>
+           </tr>;
+  }
+});
+
+var DataDisplay = React.createClass({
+  render: function() {
+    /* Ideally, we'd use the namespace here, but 
+       having the periods in the namespace name
+       seems to mess with the modal
+     */
+    //var id = 'data-modal-' + data.props.namespace;
+    var id = 'data-modal-' + this.props.i;
+    var hashId = '#' + id;
+    var lblId = id + '-label';
+    return <div>
+<button className="btn btn-default" data-toggle="modal" data-target={hashId}>
+  Show Data
+</button>
+
+<div className="modal fade" id={id} tabindex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
+  <div className="modal-dialog">
+    <div className="modal-content">
+      <div className="modal-header">
+        <button type="button" className="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span className="sr-only">Close</span></button>
+        <h4 className="modal-title" id="myModalLabel">Modal title</h4>
+      </div>
+      <div className="modal-body">
+{JSON.stringify(this.props.data)} {this.props.i}
+      </div>
+      <div className="modal-footer">
+        <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" className="btn btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+    </div>
   }
 });
 
@@ -167,19 +295,19 @@ var SelectExisting = React.createClass({
       }.bind(this));
   },
   render: function() {
-    var list = [];
+    var label = <span>Select Existing</span>
     if (this.state.loading) {
-      list.push(<li key='loading'><a href='#'>Loading...</a></li>);
-    } else {
-      list = this.state.namespaces.map(function(ns) {
-        return <li
-                  data-name={ns.name}
-                  data-namespace={ns.namespace}
-                  data-expires={ns.expires}
-                  key={ns.namespace}
-                  onClick={this.select}><a href='#'>{ns.name}</a></li>;
-      }, this);
+      label = <span><span className='glyphicon glyphicon-refresh'></span> Select Existing</span>
     }
+    var list = this.state.namespaces.map(function(ns) {
+      return <li
+                data-name={ns.name}
+                data-namespace={ns.namespace}
+                data-expires={ns.expires}
+                key={ns.namespace}
+                onClick={this.select}><a href='#'>{ns.name}</a>
+             </li>;
+    }, this);
     // Quick hack from http://stackoverflow.com/a/19229738
     var style = {
       height: 'auto',
@@ -188,7 +316,7 @@ var SelectExisting = React.createClass({
     };
     return <div className='btn-group'>
            <button className='btn btn-primary dropdown-toggle' data-toggle='dropdown'>
-             Select Existing <span className='caret'></span></button>
+             {label}<span className='caret'></span></button>
            <ul className='dropdown-menu scrollable-menu' role='menu' style={style}>{list}</ul>
            </div>
   }
