@@ -7,8 +7,6 @@ var IndexBrowser = React.createClass({
   render: function() {
     return (
         <div>
-        <div className='page-header'><h1>Taskcluster Index</h1></div>
-        <p>This is a tool to browse the index of tasks.  Use it only for good.</p>
         <NamespaceSelector />
         <ComponentThatGoesPing />
         </div>
@@ -31,7 +29,7 @@ var NamespaceSelector = React.createClass({
     this.setState({error: error});
   },
   select: function(namespace) {
-    this.setState({selectedNamespace: namespace});
+    this.setState({selectedNamespace: namespace, error: null});
   },
   render: function() {
     var result = ''; 
@@ -364,8 +362,8 @@ var ComponentThatGoesPing = React.createClass({
   render: function() {
     return <div>
       <h2>Ping!<small>check if the indexing server is up</small></h2>
-      <PingButton handler={this.pingServer} />
       <PingResult alive={this.state.alive} uptime={this.state.uptime} />
+      <PingButton handler={this.pingServer} />
     </div>;
   }
 });
