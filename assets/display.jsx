@@ -159,45 +159,50 @@ var TaskRow = React.createClass({
              <td>{t.namespace}</td>
              <td>{t.taskId}</td>
              <td>{t.rank}</td>
-             <td><DataDisplay namespace={t.namespace} data={t.data} /></td>
+             <td><DataDisplayButton namespace={t.namespace} data={t.data} /></td>
              <td>{t.expires}</td>
            </tr>;
   }
 });
 
-var DataDisplay = React.createClass({
+var DataDisplayButton = React.createClass({
   render: function() {
-    var id = 'data-modal-' + this.props.namespace.replace(':', '_COLON_').replace('.', '_PERIOD_');
+    // We have to remove periods and colons from ID names
+    // because Jquery likes to silently fail if IDs that it cares
+    // about contain either of these chars.  I'd prefer to hash
+    // the ID using SHA1, but I don't have a sha1 easily available
+    var id = 'data-modal-' + this.props.namespace
+                              .replace(/[.]/g, '_DOT_')
+                              .replace(/[:]/g, '_COL_');
     var hashId = '#' + id;
     var lblId = id + '-label';
     return <div>
-<button className="btn btn-default" data-toggle="modal" data-target={hashId}>
-  Show Data
-</button>
+            <button className="btn btn-default" data-toggle="modal" data-target={hashId}>
+              Show Data
+            </button>
 
-<div className="modal fade" id={id} tabIndex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
-  <div className="modal-dialog">
-    <div className="modal-content">
-      <div className="modal-header">
-        <button type="button" className="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span className="sr-only">Close</span></button>
-        <h4 className="modal-title" id="{lblId}">Data for {this.props.namespace}</h4>
-      </div>
-      <div className="modal-body">
-        <p>Below is task specific data for this index</p> 
-        <pre><code>{JSON.stringify(this.props.data, null, 2)}</code></pre>
-      </div>
-      <div className="modal-footer">
-        <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
-        <button type="button" className="btn btn-primary">Save changes</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
-
-    </div>
+            <div className="modal fade" id={id} tabIndex="-1" role="dialog" aria-labelledby={lblId} aria-hidden="true">
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <button type="button" className="close" data-dismiss="modal">
+                      <span aria-hidden="true">&times;</span>
+                      <span className="sr-only">Close</span>
+                    </button>
+                    <h4 className="modal-title" id="{lblId}">Data for {this.props.namespace}</h4>
+                  </div>
+                  <div className="modal-body">
+                    <p>Below is task specific data for this index</p> 
+                    <pre><code>{JSON.stringify(this.props.data, null, 2)}</code></pre>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" className="btn btn-primary">Save changes</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>;
   }
 });
 
