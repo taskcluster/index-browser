@@ -155,12 +155,14 @@ var TasksForNamespace = React.createClass({
 var TaskRow = React.createClass({
   render: function() {
     var t = this.props.task;
+    var dateObj = new Date(t.expires);
+    var prettyExpiry = dateObj.toUTCString() + ' - ' + humaneDate(dateObj);
     return <tr>
              <td>{t.namespace}</td>
              <td>{t.taskId}</td>
              <td>{t.rank}</td>
-             <td><DataDisplayButton namespace={t.namespace} data={t.data} /></td>
-             <td>{t.expires}</td>
+             <td><DataDisplayButton task={t} prettyExpiry={prettyExpiry}/></td>
+             <td>{prettyExpiry}</td>
            </tr>;
   }
 });
@@ -171,11 +173,12 @@ var DataDisplayButton = React.createClass({
     // because Jquery likes to silently fail if IDs that it cares
     // about contain either of these chars.  I'd prefer to hash
     // the ID using SHA1, but I don't have a sha1 easily available
-    var id = 'data-modal-' + this.props.namespace
+    var id = 'data-modal-' + this.props.task.namespace
                               .replace(/[.]/g, '_DOT_')
                               .replace(/[:]/g, '_COL_');
     var hashId = '#' + id;
     var lblId = id + '-label';
+    var task = this.props.task;
     return <div>
             <button className="btn btn-default" data-toggle="modal" data-target={hashId}>
               Show Data
@@ -189,11 +192,18 @@ var DataDisplayButton = React.createClass({
                       <span aria-hidden="true">&times;</span>
                       <span className="sr-only">Close</span>
                     </button>
-                    <h4 className="modal-title" id="{lblId}">Data for {this.props.namespace}</h4>
+                    <h4 className="modal-title" id="{lblId}">Data for {task.namespace}</h4>
                   </div>
                   <div className="modal-body">
-                    <p>Below is task specific data for this index</p> 
-                    <pre><code>{JSON.stringify(this.props.data, null, 2)}</code></pre>
+                    <h5>Defined Data</h5>
+                    <ul className="list-group">
+                      <li className="list-group-item">Namespace: {task.namespace}</li>
+                      <li className="list-group-item">Task ID: {task.taskId}</li>
+                      <li className="list-group-item">Rank: {task.rank}</li>
+                      <li className="list-group-item">Expiration: {this.props.prettyExpiry}</li>
+                    </ul>
+                    <h5>Arbitrary Data</h5>
+                    <pre><code>{window.linkify(JSON.stringify(this.props.task.data, null, 2))}</code></pre>
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn btn-default" data-dismiss="modal">Close</button>
