@@ -104,7 +104,6 @@ var SelectExisting = React.createClass({
   getInitialState: function() {
     return {
       namespaces: [],
-      continuationToken: null,
       loading: true
     };
   },
@@ -117,20 +116,11 @@ var SelectExisting = React.createClass({
   load: function() {
     var index = new window.taskcluster.index();
     var payload = {};
-    if (this.state.continuationToken) {
-      payload.continuationToken = this.state.continuationToken; 
-    } else {
-      // We reset so that we don't continuously append.  This could
-      // be racing with the next setState on success, but let's focus
-      // on something more important than non-harmful duplicate entries
-      this.setState({namespaces: []});
-    }
     //Is there a better way to list all namespaces?
     index.listNamespaces('', payload)
       .then(function(result) {
         this.setState({
           namespaces: this.state.namespaces.concat(result.namespaces),
-          continuationToken: result.continuationToken,
           loading: false,
         });
       }.bind(this))
@@ -142,7 +132,9 @@ var SelectExisting = React.createClass({
   render: function() {
     var label = <span>Select Existing</span>
     if (this.state.loading) {
-      label = <span><span className='glyphicon glyphicon-refresh'></span> Select Existing</span>
+      label = <span><span className='glyphicon glyphicon-refresh'></span> {label}</span>
+    } else {
+      label = <span>{label}</span>
     }
     var list = this.state.namespaces.map(function(ns) {
       return <li
@@ -172,7 +164,6 @@ var TaskList = React.createClass({
     return {
       error: null,
       loading: true,
-      continuationToken: null,
       tasks: []
     };
   },
@@ -180,25 +171,12 @@ var TaskList = React.createClass({
     var index = new window.taskcluster.index();
     
     var payload = {};
-    if (this.state.continuationToken) {
-      payload = {
-        continuationToken: this.state.continuationToken
-      };
-    } else {
-      this.setState({tasks: []});
-    }
-    console.log('Payload: ' + JSON.stringify(payload));
 
     index.listTasks(this.props.namespace, JSON.stringify(payload))
       .then(function(result) {
-        console.log('Got a new continuationToken: ' + result.continuationToken);
-        /* I don't know why, but I seem to continuously get the same continuation
-         * token no matter what I pass in as the payload.  I don't know what's broken
-         */
         this.setState({
           loading: false,
           tasks: result.tasks,
-          continuationToken: result.continuationToken
         });
       }.bind(this))
       .then(null, function(error) {
@@ -238,7 +216,7 @@ var TaskList = React.createClass({
           <h3>Tasks for {this.props.namespace}</h3>
           <TasksForNamespace tasks={this.state.tasks} />
           {loadingBar}
-          {this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''}
+          {/*this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''*/}
         </span>;
       }
     }
@@ -376,7 +354,16 @@ var TaskDisplay = React.createClass({
       </ul>
       <h5>Arbitrary Data</h5>
       <pre><code>{window.linkify(JSON.stringify(task.data, null, 2))}</code></pre>
+      <h5>API Location</h5>
+      <FindTaskAPILink taskname={task.namespace} />
     </span>;
+  }
+});
+
+var FindTaskAPILink = React.createClass({
+  render: function() {
+    var apiUri = 'https://index.taskcluster.net/v1/task/' + this.props.taskname;
+    return <code><a target='_blank' href={apiUri}>{apiUri}</a></code>;
   }
 });
 
