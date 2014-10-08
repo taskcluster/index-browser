@@ -34,7 +34,8 @@ var TaskBrowser = React.createClass({
     return <div>
       <h2>Search for Namespace</h2>
       <NamespaceSearchEntry search={this.select} clear={this.clear} error={this.error} />  
-      {this.state.error ? <ErrorBar error={this.state.error} /> : <TaskList namespace={this.state.namespace} />}
+      {this.state.error ? <ErrorBar error={this.state.error} /> : ''}
+      {!this.state.error && this.state.namespace ? <TaskList namespace={this.state.namespace} /> : ''}
       </div>
   }
 });
@@ -120,7 +121,7 @@ var SelectExisting = React.createClass({
     index.listNamespaces('', payload)
       .then(function(result) {
         this.setState({
-          namespaces: this.state.namespaces.concat(result.namespaces),
+          namespaces: result.namespaces,
           loading: false,
         });
       }.bind(this))
@@ -169,10 +170,9 @@ var TaskList = React.createClass({
   },
   loadMore: function() {
     var index = new window.taskcluster.index();
-    
     var payload = {};
 
-    index.listTasks(this.props.namespace, JSON.stringify(payload))
+    index.listTasks(this.props.namespace, payload)
       .then(function(result) {
         this.setState({
           loading: false,
