@@ -241,19 +241,6 @@ var TasksForNamespace = React.createClass({
   }
 });
 
-var LoadMoreTasksButton = React.createClass({
-  render: function() {
-    return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
-  }
-});
-
-var ResetTasks = React.createClass({
-  render: function() {
-    return <button className='btn btn-default' onClick={this.props.handler}>Reload</button>;
-  }
-});
-
-
 var TaskRow = React.createClass({
   render: function() {
     var t = this.props.task;
@@ -266,6 +253,18 @@ var TaskRow = React.createClass({
              <td><DataDisplayButton task={t} /></td>
              <td>{expiryTime(t.expires)}</td>
            </tr>;
+  }
+});
+
+var LoadMoreTasksButton = React.createClass({
+  render: function() {
+    return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
+  }
+});
+
+var ResetTasks = React.createClass({
+  render: function() {
+    return <button className='btn btn-default' onClick={this.props.handler}>Reload</button>;
   }
 });
 
