@@ -188,6 +188,7 @@ var TaskList = React.createClass({
         this.setState({
           loading: false,
           tasks: result.tasks,
+          error: null,
         });
       }.bind(this))
       .then(null, function(error) {
@@ -210,35 +211,30 @@ var TaskList = React.createClass({
     this.loadMore();
   },
   render: function() {
+    var resetButton = <ResetButton handler={this.reset} what='tasks' />;
+    var header = <h3> Tasks for {this.props.namespace}</h3>;
+    var result;
     if (this.state.error) {
-      return <ErrorBar error={this.state.error} />;
+      result = <ErrorBar error={this.state.error} />;
+    } else if (this.state.loading) {
+      result = <LoadingBar />;
+    } else if (this.state.tasks.length === 0) {
+      result = <div className='alert alert-info'>No tasks were found</div>;
     } else {
-      var resetButton = <ResetButton handler={this.reset} what='tasks' />;
-      if (this.state.loading) {
-        return <LoadingBar />;
-      } else if (this.state.tasks.length === 0) {
-        return <span><div className='alert alert-info'>No tasks were found</div>
-                     {resetButton}</span>
-      } else {
-        return <span>
-          <h3>Tasks for {this.props.namespace}</h3>
-          
-          <div className='table-responsive'>
-          <table className='table table-hover table-striped'>
-            <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
-            <tbody>
-            {
-              this.state.tasks.map(function (t) {
-                return <TaskRow key={t.namespace} task={t} />;
-              }, this)
-            }
-            </tbody>
-          </table>
-          </div>;
-          {resetButton}
-        </span>;
-      }
+      result = <div className='table-responsive'>
+        <table className='table table-hover table-striped'>
+          <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
+          <tbody>
+          {
+            this.state.tasks.map(function (t) {
+              return <TaskRow key={t.namespace} task={t} />;
+            }, this)
+          }
+          </tbody>
+        </table>
+      </div>
     }
+    return <div>{header}{result}{resetButton}</div>;
   }
 });
 
@@ -261,7 +257,8 @@ var NamespaceList = React.createClass({
   getInitialState: function() {
     return {
       childNamespaces: [],
-      loading: true
+      loading: true,
+      error: null
     };
   },
   reset: function() {
@@ -276,10 +273,16 @@ var NamespaceList = React.createClass({
       .then(function(result) {
         this.setState({
           childNamespaces: result.namespaces,
-          loading: false
+          loading: false,
+          error: null,
         });
       }.bind(this))
-      .then(null, function(error) {}.bind(this));
+      .then(null, function(error) {
+        this.setState({
+          loading: false,
+          error: error
+        });
+      }.bind(this));
   },
   componentDidMount: function() {
     this.load();
@@ -292,17 +295,16 @@ var NamespaceList = React.createClass({
   },
   render: function() {
     var resetButton = <ResetButton handler={this.reset} what='namespaces' />;
-    if (this.state.loading) {
-      return <LoadingBar />;
+    var header = <h3>Namespaces for {this.props.namespace}</h3>;
+    var result;
+    if (this.state.error) {
+      result = <ErrorBar error={this.state.error} />;
+    } else if (this.state.loading) {
+      result = <LoadingBar />;
     } else if (this.state.childNamespaces.length === 0) {
-      return <span><div className='alert alert-info'>No child namespaces found</div>
-                   {resetButton}</span>;
+      result = <div className='alert alert-info'>No child namespaces found</div>;
     } else {
-      console.log('Building namespaces table');
-      return <span>
-        <h3>Namespaces for {this.props.namespace}</h3>
-        
-        <div className='table-responsive'>
+      result = <div className='table-responsive'>
         <table className='table table-hover table-stripped'>
           <thead><tr><th>Name</th><th>Expires</th></tr></thead>
           <tbody>
@@ -313,10 +315,10 @@ var NamespaceList = React.createClass({
           }
           </tbody>
         </table>
-        </div>
-        {resetButton}
-      </span>;
+      </div>;
     }
+
+    return <div>{header}{result}{resetButton}</div>;
   }
 });
 
@@ -326,7 +328,6 @@ var NamespaceRow = React.createClass({
   },
   render: function() {
     var ns = this.props.ns;
-    console.log('building ns row');
     return <tr onClick={this.select} data-namespace={ns.namespace}>
             <td>{ns.name}</td>
             <td>{expiryTime(ns.expires)}</td>
@@ -493,7 +494,7 @@ var ComponentThatGoesPing = React.createClass({
   },
   render: function() {
     return <div>
-      <h2>Ping!<small>check if the indexing server is up</small></h2>
+      <h2>Ping</h2>
       <PingResult alive={this.state.alive} uptime={this.state.uptime} />
       <PingButton handler={this.pingServer} />
     </div>;
