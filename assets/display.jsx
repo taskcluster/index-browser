@@ -33,6 +33,7 @@ var TaskBrowser = React.createClass({
     this.setState({error: error});
   },
   select: function(namespace) {
+    window.location.hash = namespace;
     this.setState({namespace: namespace, error: null});
   },
   render: function() {
@@ -123,6 +124,7 @@ var SelectExisting = React.createClass({
     this.load();
   },
   select: function(e) {
+    e.preventDefault();
     this.props.select(e.currentTarget.getAttribute('data-namespace'));
   },
   load: function() {
