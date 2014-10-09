@@ -467,12 +467,6 @@ var LoadingBar = React.createClass({
   }
 });
 
-var NamespaceInfo = React.createClass({
-  render: function() {
-    return <p>Information for namespace {this.props.namespace}</p>;
-  }
-});
-
 var TaskInspectorLink = React.createClass({
   render: function() {
     var link = 'http://docs.taskcluster.net/tools/task-inspector/#' + this.props.id;
