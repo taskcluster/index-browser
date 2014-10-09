@@ -205,39 +205,35 @@ var TaskList = React.createClass({
     this.loadMore();
   },
   render: function() {
-    var result;
     if (this.state.error) {
-      result = <ErrorBar error={this.state.error} />;
+      return <ErrorBar error={this.state.error} />;
     } else {
+      var resetButton = <ResetButton handler={this.reset} what='tasks' />;
       if (this.state.loading) {
-        result = <LoadingBar />;
+        return <LoadingBar />;
       } else if (this.state.tasks.length === 0) {
-        result = <div className='alert alert-info'>No tasks were found</div>;
+        return <span><div className='alert alert-info'>No tasks were found</div>
+                     {resetButton}</span>
       } else {
-        result = <span>
+        return <span>
           <h3>Tasks for {this.props.namespace}</h3>
-          <TasksForNamespace tasks={this.state.tasks} />
+          
+          <div className='table-responsive'>
+          <table className='table table-hover table-striped'>
+            <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
+            <tbody>
+            {
+              this.state.tasks.map(function (t) {
+                return <TaskRow key={t.namespace} task={t} />;
+              }, this)
+            }
+            </tbody>
+          </table>
+          </div>;
+          {resetButton}
         </span>;
       }
     }
-        
-    return <div>{result}<ResetButton handler={this.reset} what='tasks' /></div>;
-  }
-});
-
-var TasksForNamespace = React.createClass({
-  render: function() {
-    return <div className='table-responsive'><table className='table table-hover table-striped'>
-             <thead><tr><th>Namespace</th><th>ID</th><th>Rank</th><th>Data</th><th>Expires</th></tr></thead>
-             <tbody>
-             {
-                this.props.tasks.map(function (t) {
-                  return <TaskRow key={t.namespace} task={t} />;
-                }, this)
-             }
-             </tbody>
-             <tfoot><tr><td>Count</td><td style={{'text-align': 'right'}} colSpan='4'>{this.props.tasks.length}</td></tr></tfoot>
-           </table></div>;
   }
 });
 
@@ -299,7 +295,7 @@ var NamespaceList = React.createClass({
     } else {
       console.log('Building namespaces table');
       return <span>
-        <h3>Child namespaces for {this.props.namespace}</h3>
+        <h3>Namespaces for {this.props.namespace}</h3>
         
         <div className='table-responsive'>
         <table className='table table-hover table-stripped'>
