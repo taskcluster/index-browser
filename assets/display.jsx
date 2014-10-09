@@ -33,8 +33,9 @@ var TaskBrowser = React.createClass({
   render: function() {
     return <div>
       <h2>Search for Namespace</h2>
-      <NamespaceSearchEntry search={this.select} clear={this.clear} error={this.error} />  
+      <NamespaceSearchEntry initialText={this.state.namespace || ''} search={this.select} clear={this.clear} error={this.error} />  
       {this.state.error ? <ErrorBar error={this.state.error} /> : ''}
+      {!this.state.error && this.state.namespace ? <NamespaceList select={this.select} namespace={this.state.namespace} /> : ''}
       {!this.state.error && this.state.namespace ? <TaskList namespace={this.state.namespace} /> : ''}
       </div>
   }
@@ -45,6 +46,11 @@ var NamespaceSearchEntry = React.createClass({
     return {
       error: null,
       text: '',
+    }
+  },
+  componentWillReceiveProps: function(newProps) {
+    if (this.props.initialText !== newProps.initialText) {
+      this.setState({text: newProps.initialText});
     }
   },
   error: function (error) {
@@ -203,25 +209,19 @@ var TaskList = React.createClass({
     if (this.state.error) {
       result = <ErrorBar error={this.state.error} />;
     } else {
-      var loadingBar = '';
       if (this.state.loading) {
-        var loadingBar = <div className='alert alert-info'>
-          <span className='glyphicon glyphicon-refresh'></span> Loading
-        </div>;
-      }
-      if (this.state.tasks.length === 0 && !this.state.loading) {
-        result = <div className='alert alert-info'><span className='glyphicon glyphicon-hand-right'></span> No tasks were found</div>;
+        result = <LoadingBar />;
+      } else if (this.state.tasks.length === 0) {
+        result = <div className='alert alert-info'>No tasks were found</div>;
       } else {
         result = <span>
           <h3>Tasks for {this.props.namespace}</h3>
           <TasksForNamespace tasks={this.state.tasks} />
-          {loadingBar}
-          {/*this.state.continuationToken ? <LoadMoreTasksButton handler={this.loadMore} /> : ''*/}
         </span>;
       }
     }
         
-    return <div>{result}<ResetTasks handler={this.reset} /></div>;
+    return <div>{result}<ResetButton handler={this.reset} what='tasks' /></div>;
   }
 });
 
@@ -256,15 +256,94 @@ var TaskRow = React.createClass({
   }
 });
 
+var NamespaceList = React.createClass({
+  getInitialState: function() {
+    return {
+      childNamespaces: [],
+      loading: true
+    };
+  },
+  reset: function() {
+    console.log('Resetting namespace list');
+    this.replaceState(this.getInitialState());
+    this.load();
+  },
+  load: function() {
+    var index = new window.taskcluster.index(); 
+
+    index.listNamespaces(this.props.namespace, {})
+      .then(function(result) {
+        this.setState({
+          childNamespaces: result.namespaces,
+          loading: false
+        });
+      }.bind(this))
+      .then(null, function(error) {}.bind(this));
+  },
+  componentDidMount: function() {
+    this.load();
+  },
+  componentDidUpdate: function (prevProps) {
+    if (prevProps.namespace !== this.props.namespace) {
+      console.log('Resetting component because we have a new namespace');
+      this.reset();
+    }
+  },
+  render: function() {
+    var resetButton = <ResetButton handler={this.reset} what='namespaces' />;
+    if (this.state.loading) {
+      return <LoadingBar />;
+    } else if (this.state.childNamespaces.length === 0) {
+      return <span><div className='alert alert-info'>No child namespaces found</div>
+                   {resetButton}</span>;
+    } else {
+      console.log('Building namespaces table');
+      return <span>
+        <h3>Child namespaces for {this.props.namespace}</h3>
+        
+        <div className='table-responsive'>
+        <table className='table table-hover table-stripped'>
+          <thead><tr><th>Name</th><th>Expires</th></tr></thead>
+          <tbody>
+          {
+            this.state.childNamespaces.map(function(ns) {
+              return <NamespaceRow select={this.props.select} key={ns.namespace} ns={ns} />;
+            }, this)
+          }
+          </tbody>
+        </table>
+        </div>
+        {resetButton}
+      </span>;
+    }
+  }
+});
+
+var NamespaceRow = React.createClass({
+  select: function(e) {
+    this.props.select(e.currentTarget.getAttribute('data-namespace'));
+  },
+  render: function() {
+    var ns = this.props.ns;
+    console.log('building ns row');
+    return <tr onClick={this.select} data-namespace={ns.namespace}>
+            <td>{ns.name}</td>
+            <td>{expiryTime(ns.expires)}</td>
+    </tr>;
+  
+  }
+});
+
 var LoadMoreTasksButton = React.createClass({
   render: function() {
     return <button className='btn btn-primary' onClick={this.props.handler}>Load More Tasks</button>;
   }
 });
 
-var ResetTasks = React.createClass({
+var ResetButton = React.createClass({
   render: function() {
-    return <button className='btn btn-default' onClick={this.props.handler}>Reload</button>;
+    return <button className='btn btn-default' onClick={this.props.handler}>
+            Reload{this.props.what ? ' ' + this.props.what : ''}</button>;
   }
 });
 
@@ -372,6 +451,14 @@ var ErrorBar = React.createClass({
       <span className='glyphicon glyphicon-exclamation-sign'></span> 
       <strong>ERROR</strong> {this.props.error.message || this.props.error}
       {this.props.error.stack ? <pre>{this.props.error.stack}</pre> : ''}
+    </div>;
+  }
+});
+
+var LoadingBar = React.createClass({
+  render: function() {
+    return <div className='alert alert-info'>
+            <span className='glyphicon glyphicon-refresh'></span> Loading...
     </div>;
   }
 });
