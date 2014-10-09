@@ -16,8 +16,13 @@ var IndexBrowser = React.createClass({
 
 var TaskBrowser = React.createClass({
   getInitialState: function() {
+    var hashLoc = window.location.hash.slice(1);
+    if (hashLoc && hashLoc.slice(hashLoc.length - 1) === '.') {
+      hashLoc = hashLoc.slice(0, hashLoc.length - 1);
+      window.location.hash = hashLoc;
+    }
     return {
-      namespace: null,
+      namespace: hashLoc ? hashLoc : null,
       error: null,
     }
   },
